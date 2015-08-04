@@ -37,16 +37,15 @@ function toJSON() {
     };
 };
 
-AppError.createCustom = function createCustom(name, defaultMsg, defaultCode, BaseError, captureStack, logError) {
-    BaseError = BaseError || AppError;
+AppError.createCustom = function createCustom(name, defaultMsg, defaultCode, captureStack, logError) {
     function CustomError(msg, code, data) {
-        if (!(this instanceof Error)) { return new CustomError.apply(this, arguments); }
+        if (!(this instanceof Error)) { return new CustomError(msg, code, data); }
         if ('object' === typeof msg) {
             code = msg.code;
             data = msg.data;
             msg = msg.message || msg.msg;
         }
-        BaseError.call(this, {
+        AppError.call(this, {
             message: msg || defaultMsg,
             type: name,
             code: code || defaultCode,
@@ -56,7 +55,7 @@ AppError.createCustom = function createCustom(name, defaultMsg, defaultCode, Bas
         }, CustomError);
         return this;
     }
-    util.inherits(CustomError, BaseError);
+    util.inherits(CustomError, AppError);
     CustomError.prototype.name = name;
 
     return CustomError;
