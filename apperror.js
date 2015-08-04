@@ -34,7 +34,7 @@ AppError.prototype.toResponseObject = toJSON;
 AppError.prototype.log = function log(level, logger) {
     logger = logger || this.DEFAULT_LOGGER || DEFAULT_LOGGER;
     level = level || this.DEFAULT_ERROR_LEVEL || DEFAULT_ERROR_LEVEL;
-    if (this._logged || !logger || !isFunction(logger[level])) {
+    if (!this.logError || this._logged || !logger || !isFunction(logger[level])) {
         return this;
     }
     logger[level](this.toJSON());
