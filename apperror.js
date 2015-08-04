@@ -7,21 +7,21 @@ module.exports = AppError;
 var util = require('util');
 
 var DEFAULT_ERROR_LEVEL = 'error';
-var DEFAULT_LOGGER = console;
+var DEFAULT_LOGGER = console.log;
 
-function AppError(settings, context) {
-    if (!isError(this)) { return new AppError(settings, context); }
-    settings = settings || {};
-    if (isString(settings)) { settings = {message: settings} };
-    if (!has(settings, 'logError')) { settings.logError = true; }
-    this.type = settings.type || this.constructor.name;
-    this.message = settings.message || 'An error occurred.';
-    this.data = settings.data || '';
-    this.code = settings.code || settings.statusCode || 500;
+function AppError(opts, context) {
+    if (!isError(this)) { return new AppError(opts, context); }
+    opts = opts || {};
+    if (isString(opts)) { opts = {message: opts} };
+    this.type = opts.type || this.constructor.name;
+    this.message = opts.message || 'An error occurred.';
+    this.data = opts.data || '';
+    this.code = opts.code || opts.statusCode || 500;
     this.statusCode = this.code;
     this.isAppError = true;
-    this.logError = settings.logError;
-    if (settings.captureStack) {
+    this.logError = isUndefined(opts.logError) && true || opts.logError;
+    this.captureStack = opts.captureStack;
+    if (opts.captureStack) {
         Error.captureStackTrace(this, (context || arguments.callee));
     }
     this._logged = false;
@@ -34,10 +34,10 @@ AppError.prototype.toResponseObject = toJSON;
 AppError.prototype.log = function log(level, logger) {
     logger = logger || this.DEFAULT_LOGGER || DEFAULT_LOGGER;
     level = level || this.DEFAULT_ERROR_LEVEL || DEFAULT_ERROR_LEVEL;
-    if (!this.logError || this._logged || !logger || !isFunction(logger[level])) {
+    if (this.logError && this._logged || !isFunction(logger)) {
         return this;
     }
-    logger[level](this.toJSON());
+    logger(level.toUpperCase(), this.toJSON());
     this._logged = true;
     return this;
 }
@@ -51,22 +51,20 @@ function toJSON() {
     };
 };
 
-AppError.createCustom = function createCustom(name, defaultMsg, defaultCode, captureStack, logError) {
+AppError.createCustom = function createCustom(name, defaults) {
     function CustomError(msg, code, data) {
         if (!isError(this)) { return new CustomError(msg, code, data); }
+        var opts = clone(defaults);
         if (isObject(msg)) {
-            code = msg.code;
-            data = msg.data;
-            msg = msg.message || msg.msg;
+            opts.message = msg.message || msg.msg || opts.message || opts.msg;
+            opts.code = msg.code || opts.code || opts.statusCode;
+            opts.data = msg.data || opts.data;
+        } else {
+            opts.message = msg || opts.message || opts.msg;
+            opts.code = code || opts.code || opts.statusCode;
+            opts.data = data || opts.data;
         }
-        AppError.call(this, {
-            message: msg || defaultMsg,
-            type: name,
-            code: code || defaultCode,
-            data: data,
-            logError: logError,
-            captureStack: captureStack,
-        }, CustomError);
+        AppError.call(this, opts, CustomError);
         return this;
     }
     util.inherits(CustomError, AppError);
@@ -76,6 +74,16 @@ AppError.createCustom = function createCustom(name, defaultMsg, defaultCode, cap
 }
 
 var _has = Object.prototype.hasOwnProperty;
+
+function clone(obj) {
+    var o = {}, key;
+    var keys = Object.getOwnPropertyNames(obj);
+    for (var i=0, len=keys.length; i<len; i++) {
+        key = keys[i];
+        o[key] = obj[key];
+    }
+    return o;
+}
 
 function has(obj, prop) {
     return _has.call(obj, prop);
@@ -90,9 +98,13 @@ function isError(value) {
 }
 
 function isFunction(value) {
-    return 'function' === value;
+    return 'function' === typeof value;
 }
 
 function isObject(value) {
     return value && 'object' === typeof value;
+}
+
+function isUndefined(value) {
+    return 'undefined' === typeof value;
 }
