@@ -20,7 +20,7 @@ function AppError(opts, context) {
     this.statusCode = this.code;
     this.isAppError = true;
     this.logError = isUndefined(opts.logError) && true || opts.logError;
-    this.captureStack = opts.captureStack;
+    this.captureStack = isUndefined(opts.captureStack) && true || opts.captureStack;
     if (opts.captureStack) {
         Error.captureStackTrace(this, (context || arguments.callee));
     }
