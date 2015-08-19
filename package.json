@@ -2,11 +2,13 @@
   "name": "apperror",
   "private": false,
   "repository": "https://github.com/gradecam/nodejs-apperror",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "A customizable application error generator.",
   "main": "apperror.js",
   "scripts": {},
   "author": "Jarom Loveridge <jaroml@gradecam.com>",
   "license": "MIT",
-  "dependencies": { }
+  "dependencies": {
+    "lodash": "^3.10.1"
+  }
 }
