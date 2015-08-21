@@ -2,6 +2,7 @@
 'use strict';
 
 module.exports = AppError;
+module.exports.__version__ = require('./package.json')['version'];
 
 var util = require('util');
 
