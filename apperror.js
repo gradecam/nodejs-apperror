@@ -23,7 +23,7 @@ function AppError(opts, context) {
     if (this.captureStack) {
         Error.captureStackTrace(this, (context || AppError));
     }
-    this._logged = false;
+    this._logged = [];
 }
 util.inherits(AppError, Error);
 AppError.prototype.name = 'AppError';
@@ -39,24 +39,27 @@ AppError.prototype.toJSON = AppError.prototype.toResponseObject = function toJSO
 
 AppError.prototype.log = function log(logger) {
     logger = logger || this.DEFAULT_LOGGER || DEFAULT_LOGGER;
-    if (!this.logError || this.logError && this._logged) {
+    var logged = _.findWhere(this._logged, {logger: logger});
+    if (!this.logError || this.logError && logged) {
         return this;
     }
+    this._logged.push({logger: logger});
     logger.error(this.toJSON());
-    this._logged = true;
+    var stack = this.stack;
+    if (stack) { logger.error(stack); }
     return this;
 };
 
 AppError.createCustom = function createCustom(name, defaults) {
-    function CustomError(msg, code, data) {
-        if (!(this instanceof Error)) { return new CustomError(msg, code, data); }
+    function CustomError(msgOrOpts, code, data) {
+        if (!(this instanceof Error)) { return new CustomError(msgOrOpts, code, data); }
         var opts = _.extend({}, defaults);
-        if (_.isObject(msg)) {
-            opts.message = msg.message || msg.msg || opts.message || opts.msg;
-            opts.code = msg.code || msg.status || msg.statusCode || opts.code || opts.status || opts.statusCode;
-            opts.data = msg.data || opts.data;
+        if (_.isObject(msgOrOpts)) {
+            opts.message = msgOrOpts.message || msgOrOpts.msg || opts.message || opts.msg;
+            opts.code = msgOrOpts.code || msgOrOpts.status || msgOrOpts.statusCode || opts.code || opts.status || opts.statusCode;
+            opts.data = msgOrOpts.data || opts.data;
         } else {
-            opts.message = msg || opts.message || opts.msg;
+            opts.message = msgOrOpts || opts.message || opts.msg;
             opts.code = code || opts.code || opts.status || opts.statusCode;
             opts.data = data || opts.data;
         }
