@@ -59,6 +59,8 @@ AppError.createCustom = function createCustom(name, defaults) {
             opts.message = msgOrOpts.message || msgOrOpts.msg || opts.message || opts.msg;
             opts.code = msgOrOpts.code || msgOrOpts.status || msgOrOpts.statusCode || opts.code || opts.status || opts.statusCode;
             opts.data = msgOrOpts.data || opts.data;
+            if (!_.isUndefined(msgOrOpts.captureStack)) { opts.captureStack = msgOrOpts.captureStack; }
+            if (!_.isUndefined(msgOrOpts.logError)) { opts.logError = msgOrOpts.logError; }
         } else {
             opts.message = msgOrOpts || opts.message || opts.msg;
             opts.code = code || opts.code || opts.status || opts.statusCode;
