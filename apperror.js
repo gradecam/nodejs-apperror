@@ -40,7 +40,7 @@ AppError.prototype.toJSON = AppError.prototype.toResponseObject = function toJSO
 
 AppError.prototype.log = function log(logger) {
     logger = logger || this.DEFAULT_LOGGER || DEFAULT_LOGGER;
-    var logged = _.findWhere(this._logged, {logger: logger});
+    var logged = _.find(this._logged, {logger: logger});
     if (!this.logError || this.logError && logged) {
         return this;
     }
