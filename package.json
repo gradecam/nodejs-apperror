@@ -7,8 +7,5 @@
   "main": "apperror.js",
   "scripts": {},
   "author": "Jarom Loveridge <jaroml@gradecam.com>",
-  "license": "MIT",
-  "dependencies": {
-    "lodash": "^4.17.11"
-  }
+  "license": "MIT"
 }

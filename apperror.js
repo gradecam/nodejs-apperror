@@ -6,21 +6,19 @@ module.exports.__version__ = require('./package.json')['version'];
 
 var util = require('util');
 
-var _ = require('lodash');
-
 var DEFAULT_LOGGER = console;
 
 function AppError(opts, context) {
     if (!(this instanceof Error)) { return new AppError(opts, context); }
     opts = opts || {};
-    if (_.isString(opts)) { opts = {message: opts}; }
+    if (typeof opts === 'string') { opts = {message: opts}; }
     this.message = opts.message || 'An error occurred.';
     this.data = opts.data || '';
     this.code = opts.code || opts.status || opts.statusCode || 500;
     this.statusCode = this.code;
     this.isAppError = true;
-    this.logError = _.isUndefined(opts.logError) && true || opts.logError;
-    this.captureStack = _.isUndefined(opts.captureStack) && true || opts.captureStack;
+    this.logError = typeof opts.logError !== 'boolean' && true || opts.logError;
+    this.captureStack = typeof opts.captureStack !== 'boolean' && true || opts.captureStack;
     if (this.captureStack) {
         Error.captureStackTrace(this, (context || AppError));
     }
@@ -40,11 +38,10 @@ AppError.prototype.toJSON = AppError.prototype.toResponseObject = function toJSO
 
 AppError.prototype.log = function log(logger) {
     logger = logger || this.DEFAULT_LOGGER || DEFAULT_LOGGER;
-    var logged = _.find(this._logged, {logger: logger});
-    if (!this.logError || this.logError && logged) {
+    if (typeof logger.error !== 'function' || !this.logError || this.logError || this._logged.length) {
         return this;
     }
-    this._logged.push({logger: logger});
+    this._logged.push({logger});
     logger.error(this.toJSON());
     var stack = this.stack;
     if (stack) { logger.error(stack); }
@@ -54,13 +51,13 @@ AppError.prototype.log = function log(logger) {
 AppError.createCustom = function createCustom(name, defaults) {
     function CustomError(msgOrOpts, code, data) {
         if (!(this instanceof Error)) { return new CustomError(msgOrOpts, code, data); }
-        var opts = _.extend({}, defaults);
-        if (_.isObject(msgOrOpts)) {
+        var opts = Object.assign({}, defaults);
+        if (msgOrOpts && typeof msgOrOpts === 'object') {
             opts.message = msgOrOpts.message || msgOrOpts.msg || opts.message || opts.msg;
             opts.code = msgOrOpts.code || msgOrOpts.status || msgOrOpts.statusCode || opts.code || opts.status || opts.statusCode;
             opts.data = msgOrOpts.data || opts.data;
-            if (!_.isUndefined(msgOrOpts.captureStack)) { opts.captureStack = msgOrOpts.captureStack; }
-            if (!_.isUndefined(msgOrOpts.logError)) { opts.logError = msgOrOpts.logError; }
+            if (typeof msgOrOpts.captureStack === 'boolean') { opts.captureStack = msgOrOpts.captureStack; }
+            if (typeof msgOrOpts.logError === 'boolean') { opts.logError = msgOrOpts.logError; }
         } else {
             opts.message = msgOrOpts || opts.message || opts.msg;
             opts.code = code || opts.code || opts.status || opts.statusCode;
