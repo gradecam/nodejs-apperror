@@ -1,15 +1,63 @@
-/* vim: set softtabstop=4 ts=4 sw=4 expandtab tw=120 syntax=javascript: */
-'use strict';
+export interface AppErrorOptions {
+  captureStack?: boolean;
+  code?: number;
+  data?: any;
+  logError?: boolean;
+  message?: string;
+  msg?: string;
+  /** alias for code */
+  status?: number;
+  /** alias for code */
+  statusCode?: number;
+}
 
-module.exports = AppError;
-module.exports.__version__ = require('./package.json')['version'];
+interface LoggerLike {
+  error: Function;
+}
 
-var util = require('util');
+const DEFAULT_LOGGER: LoggerLike = console;
 
-var DEFAULT_LOGGER = console;
+class AppError extends Error {
+  static createCustom(name: string, defaults: AppErrorOptions = {}) {
+    class CustomAppError extends AppError {
+      constructor(msgOrOpts?: string | AppErrorOptions, code?: number | Function, data?: any) {
+        var opts = Object.assign({}, defaults);
+        if (typeof code === 'function') {
+          super(msgOrOpts, code);
+          return;
+        } else if (typeof msgOrOpts === 'string') {
+          opts.message = msgOrOpts || opts.message || opts.msg;
+          opts.code = code || opts.code || opts.status || opts.statusCode;
+          opts.data = data || opts.data;
+        } else {
+          msgOrOpts = msgOrOpts || {};
+          opts.message = msgOrOpts.message || msgOrOpts.msg || opts.message || opts.msg;
+          opts.code = msgOrOpts.code || msgOrOpts.status || msgOrOpts.statusCode || opts.code || opts.status || opts.statusCode;
+          opts.data = msgOrOpts.data || opts.data;
+          if (typeof msgOrOpts.captureStack === 'boolean') { opts.captureStack = msgOrOpts.captureStack; }
+          if (typeof msgOrOpts.logError === 'boolean') { opts.logError = msgOrOpts.logError; }
+        }
+        super(opts, CustomAppError);
+        return this;
+      }
+    }
+    CustomAppError.prototype.name = name;
+    return CustomAppError as typeof AppError & {new (msgOrOpts?: string | AppErrorOptions, code?: number, data?: any): AppError};
+  }
 
-function AppError(opts, context) {
-    if (!(this instanceof Error)) { return new AppError(opts, context); }
+  _logged: Array<{logger: LoggerLike}> = [];
+  captureStack: boolean;
+  code?: number;
+  data: any;
+  DEFAULT_LOGGER = DEFAULT_LOGGER;
+  isAppError: boolean;
+  logError: boolean;
+  name!: string;
+  statusCode?: number;
+
+
+  constructor(opts?: string | AppErrorOptions, context?: Function) {
+    super();
     opts = opts || {};
     if (typeof opts === 'string') { opts = {message: opts}; }
     this.message = opts.message || 'An error occurred.';
@@ -17,56 +65,34 @@ function AppError(opts, context) {
     this.code = opts.code || opts.status || opts.statusCode || 500;
     this.statusCode = this.code;
     this.isAppError = true;
-    this.logError = typeof opts.logError !== 'boolean' && true || opts.logError;
-    this.captureStack = typeof opts.captureStack !== 'boolean' && true || opts.captureStack;
-    if (this.captureStack) {
-        Error.captureStackTrace(this, (context || AppError));
+    this.logError = typeof opts.logError !== 'boolean' && true || !!opts.logError;
+    this.captureStack = typeof opts.captureStack !== 'boolean' && true || !!opts.captureStack;
+    if (this.captureStack && 'captureStackTrace' in Error) {
+      Error.captureStackTrace(this, (context || AppError));
     }
-    this._logged = [];
-}
-util.inherits(AppError, Error);
-AppError.prototype.name = 'AppError';
-AppError.prototype.toJSON = AppError.prototype.toResponseObject = function toJSON() {
-    return {
-        type: this.name,
-        message: this.message,
-        data: this.data,
-        code: this.code,
-    };
+  }
 
-};
-
-AppError.prototype.log = function log(logger) {
-    logger = logger || this.DEFAULT_LOGGER || DEFAULT_LOGGER;
+  log(logger: LoggerLike = this.DEFAULT_LOGGER) {
     if (typeof logger.error !== 'function' || !this.logError || this.logError || this._logged.length) {
-        return this;
+      return this;
     }
     this._logged.push({logger});
     logger.error(this.toJSON());
     var stack = this.stack;
     if (stack) { logger.error(stack); }
     return this;
-};
+  }
 
-AppError.createCustom = function createCustom(name, defaults) {
-    function CustomError(msgOrOpts, code, data) {
-        if (!(this instanceof Error)) { return new CustomError(msgOrOpts, code, data); }
-        var opts = Object.assign({}, defaults);
-        if (msgOrOpts && typeof msgOrOpts === 'object') {
-            opts.message = msgOrOpts.message || msgOrOpts.msg || opts.message || opts.msg;
-            opts.code = msgOrOpts.code || msgOrOpts.status || msgOrOpts.statusCode || opts.code || opts.status || opts.statusCode;
-            opts.data = msgOrOpts.data || opts.data;
-            if (typeof msgOrOpts.captureStack === 'boolean') { opts.captureStack = msgOrOpts.captureStack; }
-            if (typeof msgOrOpts.logError === 'boolean') { opts.logError = msgOrOpts.logError; }
-        } else {
-            opts.message = msgOrOpts || opts.message || opts.msg;
-            opts.code = code || opts.code || opts.status || opts.statusCode;
-            opts.data = data || opts.data;
-        }
-        AppError.call(this, opts, CustomError);
-    }
-    util.inherits(CustomError, AppError);
-    CustomError.prototype.name = name;
+  toJSON() {
+    return {
+      type: this.name,
+      message: this.message,
+      data: this.data,
+      code: this.code,
+    };
+  }
+  toResponseObject = this.toJSON;
+}
+AppError.prototype.name = 'AppError';
 
-    return CustomError;
-};
+export default AppError;
